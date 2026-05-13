@@ -1,133 +1,151 @@
-# Task 5: Optimised Implementation
-
-class Researcher:
-    def submit_research_output(self, ui, data):
-        print("Researcher -> UI: submitResearchOutput(data)")
-        return ui.submit(data)
-
-
-class UI:
-    def __init__(self, submission_controller):
-        self.submission_controller = submission_controller
-
-    def submit(self, data):
-        print("UI -> SubmissionController: submit(data)")
-        return self.submission_controller.submit(data)
-
-
-class SubmissionController:
-    def __init__(self, validator, database, reviewer_manager, evaluation_manager, notification_service):
-        self.validator = validator
-        self.database = database
-        self.reviewer_manager = reviewer_manager
-        self.evaluation_manager = evaluation_manager
-        self.notification_service = notification_service
-
-    def submit(self, data):
-        print("SubmissionController -> Validator: validateSubmission(data)")
-        validation_result = self.validator.validate_submission(data)
-
-        if not validation_result:
-            print("SubmissionController -> NotificationService: sendNotification(Invalid Submission)")
-            self.notification_service.send_notification("Invalid Submission")
-            return "Invalid Submission"
-
-        print("SubmissionController -> Database: saveSubmission(data)")
-        self.database.save_submission(data)
-
-        print("SubmissionController -> ReviewerManager: assignAvailableReviewers(data)")
-        assigned_reviewers = self.reviewer_manager.assign_available_reviewers(data)
-
-        print("SubmissionController -> EvaluationManager: evaluateSubmission(data, assignedReviewers)")
-        final_outcome = self.evaluation_manager.evaluate_submission(data, assigned_reviewers)
-
-        print("SubmissionController -> NotificationService: sendNotification(finalOutcome)")
-        self.notification_service.send_notification(final_outcome)
-
-        return final_outcome
-
-
 class Validator:
-    def validate_submission(self, data):
-        return "title" in data and "content" in data
 
+    def validate_format(self, data):
 
-class Database:
-    def save_submission(self, data):
-        print("Database -> SubmissionController: confirmation")
+        print("SubmissionController -> Validator: validateFormat(data)")
+
+        if data == "":
+            print("Validator -> SubmissionController: invalid")
+            return False
+
+        print("Validator -> SubmissionController: valid")
         return True
 
 
+class SubmissionDatabase:
+
+    def save_submission(self, data):
+
+        print("SubmissionController -> SubmissionDatabase: saveSubmission(data)")
+        print("SubmissionDatabase -> SubmissionController: submissionId")
+
+        return 101
+
+
 class ReviewerManager:
-    def assign_available_reviewers(self, data):
-        reviewers = [
-            Reviewer("Reviewer 1", 75),
-            Reviewer("Reviewer 2", 78),
-            Reviewer("Reviewer 3", 74)
-        ]
 
+    def assign_reviewers(self, submission_id):
+
+        print("SubmissionController -> ReviewerManager: assignReviewers(submissionId)")
         print("ReviewerManager -> SubmissionController: assignedReviewers")
-        return reviewers
 
+        return ["Reviewer 1", "Reviewer 2", "Reviewer 3"]
 
-class Reviewer:
-    def __init__(self, name, score):
-        self.name = name
-        self.score = score
+    def request_review(self, reviewer, submission_id):
 
-    def review_submission(self, data):
-        print(f"{self.name} -> EvaluationManager: reviewSubmission(data)")
-        return self.score
+        print(f"ReviewerManager -> {reviewer}: requestReview(submissionId)")
+        print(f"{reviewer} -> ReviewerManager: reviewScore")
+
+        return 75
 
 
 class EvaluationManager:
-    def evaluate_submission(self, data, reviewers):
-        scores = []
 
-        for reviewer in reviewers:
-            score = reviewer.review_submission(data)
-            scores.append(score)
+    def calculate_average(self, scores):
 
-        average_score = sum(scores) / len(scores)
-        consensus = max(scores) - min(scores) <= 10
+        print("SubmissionController -> EvaluationManager: calculateAverage(submissionId)")
+        average = sum(scores) / len(scores)
 
-        if average_score >= 70 and consensus:
-            return "Accepted"
-        elif average_score < 50:
-            return "Rejected"
+        print("EvaluationManager -> SubmissionController: averageScore")
+
+        return average
+
+    def check_consensus(self, scores):
+
+        print("SubmissionController -> EvaluationManager: checkConsensus(submissionId)")
+
+        consensus = max(scores) - min(scores) <= 15
+
+        print("EvaluationManager -> SubmissionController: consensusResult")
+
+        return consensus
+
+
+class DecisionTable:
+
+    def evaluate_decision(self, average, consensus):
+
+        print("SubmissionController -> DecisionTable: evaluateDecision(score, consensus)")
+
+        if average >= 70 and consensus:
+            decision = "Accepted"
+
+        elif average < 50:
+            decision = "Rejected"
+
         else:
-            return "Revision Required"
+            decision = "Revision Required"
+
+        print("DecisionTable -> SubmissionController: finalDecision")
+
+        return decision
 
 
 class NotificationService:
-    def send_notification(self, outcome):
-        print(f"NotificationService -> Researcher: notifyResult({outcome})")
+
+    def send_notification(self, decision):
+
+        if decision == "Accepted":
+            print("SubmissionController -> NotificationService: sendAcceptance()")
+
+        elif decision == "Rejected":
+            print("SubmissionController -> NotificationService: sendRejection()")
+
+        else:
+            print("SubmissionController -> NotificationService: sendRevisionRequest()")
+
+        print(f"NotificationService -> Researcher: final notification ({decision})")
 
 
-# Main execution
-if __name__ == "__main__":
-    validator = Validator()
-    database = Database()
-    reviewer_manager = ReviewerManager()
-    evaluation_manager = EvaluationManager()
-    notification_service = NotificationService()
+class SubmissionController:
 
-    submission_controller = SubmissionController(
-        validator,
-        database,
-        reviewer_manager,
-        evaluation_manager,
-        notification_service
-    )
+    def __init__(self):
 
-    ui = UI(submission_controller)
-    researcher = Researcher()
+        self.validator = Validator()
+        self.database = SubmissionDatabase()
+        self.reviewer_manager = ReviewerManager()
+        self.evaluation_manager = EvaluationManager()
+        self.decision_table = DecisionTable()
+        self.notification_service = NotificationService()
 
-    submission_data = {
-        "title": "Software Engineering Assignment",
-        "content": "This is the submitted artefact."
-    }
+    def process_submission(self, data):
 
-    result = researcher.submit_research_output(ui, submission_data)
+        print("Researcher -> UI: uploadSubmission(data)")
+        print("UI -> SubmissionController: processSubmission(data)")
 
-    print("\nFinal Outcome:", result)
+        valid = self.validator.validate_format(data)
+
+        if not valid:
+            self.notification_service.send_notification("Rejected")
+            print("\nFinal Outcome: Rejected")
+            return
+
+        submission_id = self.database.save_submission(data)
+
+        reviewers = self.reviewer_manager.assign_reviewers(submission_id)
+
+        scores = []
+
+        for reviewer in reviewers:
+            score = self.reviewer_manager.request_review(
+                reviewer,
+                submission_id
+            )
+            scores.append(score)
+
+        average = self.evaluation_manager.calculate_average(scores)
+
+        consensus = self.evaluation_manager.check_consensus(scores)
+
+        decision = self.decision_table.evaluate_decision(
+            average,
+            consensus
+        )
+
+        self.notification_service.send_notification(decision)
+
+        print(f"\nFinal Outcome: {decision}")
+
+
+controller = SubmissionController()
+controller.process_submission("Research Paper")
